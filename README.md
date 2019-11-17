@@ -1,4 +1,7 @@
-Personal project to create bespoke version of card game [dobble](https://www.asmodee.co.uk/featured-product/dobble/).
+Pesonal project to create bespoke version of card game [dobble](https://www.asmodee.co.uk/featured-product/dobble/). 
+
+*Please note* this is not in any way affilitated with the makers of dobble, it is my own personal code.
+
 
 # Installation
 
