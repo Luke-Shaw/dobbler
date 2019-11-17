@@ -1,0 +1,13 @@
+docs
+.Rproj.user
+.Rhistory
+.RData
+inst/doc
+.httr-oauth
+.*.Rnb.cached
+
+figures/archived
+figures/archived/*
+
+figures/sixtieth
+figures/sixtieth/*

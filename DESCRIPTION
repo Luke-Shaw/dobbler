@@ -1,0 +1,13 @@
+Package: dobbler
+Type: Package
+Title: creates a slide deck for a dobble-style game
+Version: 0.1.0
+Author: Luke Shaw
+Maintainer: <luke.francis.shaw@gmail.com>
+Description: Mainly using the package magickr, automates the process of creating a slide deck
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    lattice,
+    magick

@@ -1,0 +1,136 @@
+---
+title: "Dobbler Theory"
+author: "Luke Shaw"
+date: "13 April 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(magick)
+```
+
+A place for vaguely ordered thoughts on how to construct the dobble card image. 
+
+## Background and Background
+
+I am almost exclusively using the functionality given by the [magick](https://cran.r-project.org/web/packages/magick/vignettes/intro.html) package.
+
+When creating a dobble card you need your k images and the background, which is always a circle.
+
+To define where to put an image on the circle, the coordinate of the
+top left corner of the image is defined in number of pixels from the top left of the image.
+
+The base image can have as many pixels as you define, but for simplicity let's fix it as a 1000 x 1000 grid. This should be enough, and is a nice number to work with.
+```{r make_background}
+#the image is 1000*1000 pixels
+n = 1000
+bckgrnd <- magick::image_read("../figures/paint_circle.png")
+
+```
+
+The location within the pixel grid that an image can be added is defined initially by the circle. So if the grid is 1000x1000, and a buffer of 50 pixels is allowed for the circle border at the 4 places it is closest to the edges, the valid places to add an image are the points within the circle. I do this by defining a 1000x1000 matrix of TRUE/FALSE for whether it is valid to add a pixel there.
+
+```{r initial_space}
+#define the matrix with TRUE/FALSE based on whether inside the circle
+#circle has centre (n/2,n/2) and radius 19n/40
+mat <- outer(1:1000,1:1000,
+             FUN=function(x,y) (x-n/2)^2 + (y-n/2)^2 < (19*n/40)^2)
+
+```
+
+## Adding an image
+
+The image I want to add to my blue background is going to be a tiger with red background.
+```{r tig_r_code}
+tiger <- magick::image_read_svg('http://jeroen.github.io/images/tiger.svg', width = 400)
+tig_r <- tiger %>%
+    image_background("red") %>%
+    magick::image_scale(as.character(n/5)) #specify number of pixels in height
+tig_r
+```
+
+Now I am ready to add the image to the background, including a check whether I'm in the valid space, and an update to the matrix to add FALSE values in where I have added the image.
+
+```{r add_first_image}
+#check if can add tig_r in a defined location
+loc = c(n/2,n/2)
+
+valid_loc <- function(mat,loc, height, width){
+  #is it valid to add an image of dim width*height to 
+  #position loc (top left coord)
+  if( ((loc[1]+height)>dim(mat)[1]) | 
+      ((loc[2]+width)>dim(mat)[2])){return(FALSE)}
+    
+  sub = mat[loc[1]:(loc[1] + width),loc[2]:(loc[2] + height)]
+  if(dim(sub)[1] * dim(sub)[2] == sum(sub)){
+    #ie all elements are TRUE
+    return(TRUE)
+  } else {return(FALSE)}
+}
+
+add_image <- function(base, img, loc, width=n/5){
+  #adds the img to base$img with top-left coords loc, and updates base.
+  #base is a list containing the image and the matrix of valid pixels. 
+  
+  #TODO: find way of getitng image dimensions from img
+  height = width
+  #ideally wouldn't have to do this (doesn't belong in this fn)
+  img = magick::image_scale(img, as.character(width)) 
+
+  valid = valid_loc(base$mat, loc, height, width)
+  if(valid==FALSE){warning("will overwrite some of the image here")}
+  
+  #add the new image and make matrix FALSE in those places
+    base$img = base$img %>%
+    magick::image_composite(img, 
+                  offset=paste0("+",loc[1],"+",loc[2]))
+  base$mat[seq(loc[1],loc[1] + width),
+           seq(loc[2],loc[2] + height)] = FALSE 
+  
+  #update the base
+  return(base)
+}
+
+base <- list(img = bckgrnd, mat = mat)
+new <- add_image(base,tig_r, c(200,200))
+new_bad <- add_image(base,tig_r, c(100,100))
+
+new$img
+new_bad$img
+
+```
+
+## Creating a card through random location guessing
+
+When creating the cards, we want different images of different sizes and orientations. The way I try and achieve this is by selecting a size and orientation, then trying some random location and seeing if it is a valid place
+```{r, random_allocation}
+main_pic = add_image(base,tig_r, c(200,200))
+
+poss_heights = round(seq(n/10,n/2,length.out=5))
+poss_rotates = c(0,90,180,270)
+set.seed(1) #for consistent randomness on different runs
+
+cols = c("orange","yellow","green","blue","pink","black","white")
+for (num_images in 1:7){
+  height = sample(poss_heights, size=1)
+  rotate = sample(poss_rotates, size=1)
+  img = tiger %>% image_background(cols[num_images]) %>% magick::image_rotate(rotate)
+  a = FALSE
+  b = 0
+  #find a valid location
+  while (a == FALSE){
+    loc = round(n * runif(2)) #random location guess
+    b = b + 1
+    a = valid_loc(main_pic$mat,loc,height,height)
+    if(b==1000){
+      warning("can't find a location")
+      a = "issue"}
+  }
+  if(a!="issue"){main_pic = add_image(main_pic, img, loc, height)}
+}
+main_pic$img
+```
+
+I get an error because the random allocation can't find a place to put the image, but it has done pretty well I think, and looks like a dobble card!
+
